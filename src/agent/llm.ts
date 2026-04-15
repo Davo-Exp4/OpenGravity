@@ -59,6 +59,6 @@ async function fallbackCompletion(messages: any[], tools?: any[]): Promise<any> 
      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText}`);
   }
   
-  const data = await response.json();
+  const data = await response.json() as any;
   return data.choices[0].message;
 }
