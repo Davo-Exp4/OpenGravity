@@ -22,7 +22,7 @@ export const draftLinkedInPostTool: AgentTool = {
       draftMsg += `\n🔗 URL Adjunta: ${args.urlRef}`;
     }
     
-    draftMsg += `\n\nINSTRUCCIÓN PARA EL LLM: Mustra este borrador EXACTAMENTE al usuario. IMPORTANTE: Al final de tu mensaje debes incluir exactamente este texto: [INLINE_KEYBOARD:LINKEDIN] para que la interfaz pueda pintar los botones de publicar.`;
+    draftMsg += `\n\nINSTRUCCIÓN PARA EL LLM: Escribe este post ESTRICTAMENTE EN INGLÉS PROFESIONAL, sin importar el idioma en que se te pidió. Mustra este borrador EXACTAMENTE al usuario. IMPORTANTE: Al final de tu mensaje debes incluir exactamente este texto: [INLINE_KEYBOARD:LINKEDIN] para que la interfaz pueda pintar los botones de publicar.`;
     
     return draftMsg;
   }

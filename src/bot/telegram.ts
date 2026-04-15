@@ -32,42 +32,45 @@ bot.command('clear', async (ctx) => {
 
 import { downloadTelegramVoice, transcribeAudio, generateSpeech } from '../agent/audio.js';
 
+export async function sendAgentResponse(chatId: number, response: string, replyToMessageId?: number) {
+  let replyMarkup: InlineKeyboard | undefined;
+  
+  if (response.includes('[INLINE_KEYBOARD:LINKEDIN]')) {
+    response = response.replace('[INLINE_KEYBOARD:LINKEDIN]', '').trim();
+    replyMarkup = new InlineKeyboard()
+      .text('✅ Publicar en LinkedIn', 'linkedin_publish').row()
+      .text('❌ Descartar', 'linkedin_discard');
+  }
+
+  const options: any = {};
+  if (replyToMessageId) options.reply_to_message_id = replyToMessageId;
+
+  if (response.length > 4000) {
+    const chunks = response.match(/.{1,4000}/g) || [];
+    for (let i = 0; i < chunks.length; i++) {
+        if (i === chunks.length - 1 && replyMarkup) {
+            options.reply_markup = replyMarkup;
+            await bot.api.sendMessage(chatId, chunks[i], options);
+        } else {
+            await bot.api.sendMessage(chatId, chunks[i], options);
+        }
+    }
+  } else {
+    if (replyMarkup) options.reply_markup = replyMarkup;
+    await bot.api.sendMessage(chatId, response, options);
+  }
+}
+
 // 4. Handle text messages
 bot.on('message:text', async (ctx) => {
   const text = ctx.message.text;
   const chatId = ctx.chat.id;
 
-  // Let the user know the bot is "typing"
   await ctx.replyWithChatAction('typing');
 
   try {
-    let response = await processUserMessage(chatId, text);
-    let replyMarkup: InlineKeyboard | undefined;
-    
-    // Check if the LLM outputted the special marker for LinkedIn draft
-    if (response.includes('[INLINE_KEYBOARD:LINKEDIN]')) {
-      response = response.replace('[INLINE_KEYBOARD:LINKEDIN]', '').trim();
-      replyMarkup = new InlineKeyboard()
-        .text('✅ Publicar en LinkedIn', 'linkedin_publish').row()
-        .text('❌ Descartar', 'linkedin_discard');
-    }
-
-    if (response.length > 4000) {
-      const chunks = response.match(/.{1,4000}/g) || [];
-      for (let i = 0; i < chunks.length; i++) {
-        if (i === chunks.length - 1 && replyMarkup) {
-          await ctx.reply(chunks[i], { reply_markup: replyMarkup });
-        } else {
-          await ctx.reply(chunks[i]);
-        }
-      }
-    } else {
-      if (replyMarkup) {
-        await ctx.reply(response, { reply_markup: replyMarkup });
-      } else {
-        await ctx.reply(response);
-      }
-    }
+    const response = await processUserMessage(chatId, text);
+    await sendAgentResponse(chatId, response, ctx.message.message_id);
   } catch (error: any) {
     console.error(`[Bot Error]`, error);
     await ctx.reply('⚠️ Ocurrió un error al procesar tu solicitud: ' + error.message);

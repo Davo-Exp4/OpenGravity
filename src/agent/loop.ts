@@ -4,12 +4,14 @@ import { tools } from '../tools/registry.js';
 import { getCurrentTimeTool } from '../tools/time.js';
 import { draftTradeTool, executeTradeTool } from '../tools/trade.js';
 import { draftLinkedInPostTool } from '../tools/linkedin.js';
+import { searchNewsTool } from '../tools/news.js';
 
 // Register tools
 tools.register(getCurrentTimeTool);
 tools.register(draftTradeTool);
 tools.register(executeTradeTool);
 tools.register(draftLinkedInPostTool);
+tools.register(searchNewsTool);
 
 const SYSTEM_PROMPT = `Eres OpenGravity, un agente de IA personal altamente capaz y seguro, creado por Davo.
 Te comunicas exclusivamente a través de Telegram y hablas estrictamente con tu creador, Davo.

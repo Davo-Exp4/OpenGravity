@@ -8,3 +8,5 @@ export const opengravitybot = onRequest(
   { maxInstances: 5 }, 
   webhookCallback(bot, 'express')
 );
+
+export { proactiveLinkedInRoutine } from './cron.js';
