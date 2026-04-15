@@ -1,17 +1,14 @@
 import Groq from 'groq-sdk';
 import { config } from '../config.js';
 
+import fetch from 'node-fetch';
+
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const groq = new Groq({
   apiKey: config.GROQ_API_KEY,
 });
 
-// Since groq-sdk uses the same OpenAI-compatible format as OpenRouter, we can reuse it
-const openrouter = config.OPENROUTER_API_KEY ? new Groq({
-  apiKey: config.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-}) : null;
 
 export async function chatCompletion(
   messages: any[],
@@ -38,16 +35,30 @@ export async function chatCompletion(
 }
 
 async function fallbackCompletion(messages: any[], tools?: any[]): Promise<any> {
-  if (!openrouter) {
+  if (!config.OPENROUTER_API_KEY) {
      throw new Error('OpenRouter API Key not provided. Fallback failed.');
   }
   
   console.log(`[LLM] Requesting OpenRouter (${config.OPENROUTER_MODEL})...`);
-  const completion = await openrouter.chat.completions.create({
-    model: config.OPENROUTER_MODEL,
-    messages: messages,
-    tools: tools && tools.length > 0 ? tools : undefined,
-    temperature: 0.5,
+  
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: config.OPENROUTER_MODEL,
+      messages: messages,
+      tools: tools && tools.length > 0 ? tools : undefined,
+      temperature: 0.5,
+    })
   });
-  return completion.choices[0].message;
+  
+  if (!response.ok) {
+     throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.choices[0].message;
 }

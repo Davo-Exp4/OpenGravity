@@ -73,7 +73,8 @@ bot.on('message:text', async (ctx) => {
     await sendAgentResponse(chatId, response, ctx.message.message_id);
   } catch (error: any) {
     console.error(`[Bot Error]`, error);
-    await ctx.reply('⚠️ Ocurrió un error al procesar tu solicitud: ' + error.message);
+    const safeError = error.message ? error.message.substring(0, 1000) : "Unknown Error";
+    await ctx.reply('⚠️ Ocurrió un error al procesar tu solicitud: ' + safeError);
   }
 });
 
@@ -167,7 +168,8 @@ bot.on('message:voice', async (ctx) => {
     }
   } catch (error: any) {
     console.error(`[Audio Error]`, error);
-    await ctx.reply('⚠️ Hubo un error procesando tu nota de voz: ' + error.message);
+    const safeError = error.message ? error.message.substring(0, 1000) : "Unknown Error";
+    await ctx.reply('⚠️ Hubo un error procesando tu nota de voz: ' + safeError);
   }
 });
 
