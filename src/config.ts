@@ -19,7 +19,7 @@ export const config = {
   BITGET_PASSPHRASE: process.env.BITGET_PASSPHRASE,
 
   // Integrations
-  MAKE_LINKEDIN_WEBHOOK_URL: process.env.MAKE_LINKEDIN_WEBHOOK_URL,
+  MAKE_LINKEDIN_WEBHOOK_URL: process.env.MAKE_LINKEDIN_WEBHOOK_URL || 'https://hook.us1.make.com/2059wfhvuwt2lulnhhdyynp4cx7vu5vh',
 };
 
 // Validate required keys
