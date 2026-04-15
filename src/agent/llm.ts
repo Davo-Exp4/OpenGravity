@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk';
-import { config } from '../config';
+import { config } from '../config.js';
 
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 

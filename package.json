@@ -1,27 +1,35 @@
 {
   "name": "opengravity",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts"
+    "dev": "tsx watch src/dev.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
+    "@google-cloud/text-to-speech": "^6.4.0",
+    "ccxt": "^4.5.45",
     "dotenv": "^17.3.1",
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.2.2",
+    "firebase-functions-test": "^3.4.1",
     "grammy": "^1.41.1",
-    "groq-sdk": "^1.1.1"
+    "groq-sdk": "^1.1.1",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": "20"
+  }
 }

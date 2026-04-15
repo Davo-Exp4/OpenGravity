@@ -1,7 +1,7 @@
-import { Bot } from 'grammy';
-import { config, allowedUserIds } from '../config';
-import { processUserMessage } from '../agent/loop';
-import { memory } from '../db/memory';
+import { Bot, InputFile, InlineKeyboard } from 'grammy';
+import { config, allowedUserIds } from '../config.js';
+import { processUserMessage } from '../agent/loop.js';
+import { memory } from '../db/memory.js';
 
 export const bot = new Bot(config.TELEGRAM_BOT_TOKEN!);
 
@@ -26,9 +26,11 @@ bot.command('start', async (ctx) => {
 
 // 3. Command: /clear (clear history)
 bot.command('clear', async (ctx) => {
-  memory.clearHistory(ctx.chat.id);
+  await memory.clearHistory(ctx.chat.id);
   await ctx.reply('🧹 Memoria borrada. Empecemos de nuevo.');
 });
+
+import { downloadTelegramVoice, transcribeAudio, generateSpeech } from '../agent/audio.js';
 
 // 4. Handle text messages
 bot.on('message:text', async (ctx) => {
@@ -39,21 +41,124 @@ bot.on('message:text', async (ctx) => {
   await ctx.replyWithChatAction('typing');
 
   try {
-    const response = await processUserMessage(chatId, text);
+    let response = await processUserMessage(chatId, text);
+    let replyMarkup: InlineKeyboard | undefined;
     
-    // Telegram has a 4096 char limit per message.
-    // If the response is too long, we split it.
+    // Check if the LLM outputted the special marker for LinkedIn draft
+    if (response.includes('[INLINE_KEYBOARD:LINKEDIN]')) {
+      response = response.replace('[INLINE_KEYBOARD:LINKEDIN]', '').trim();
+      replyMarkup = new InlineKeyboard()
+        .text('✅ Publicar en LinkedIn', 'linkedin_publish').row()
+        .text('❌ Descartar', 'linkedin_discard');
+    }
+
     if (response.length > 4000) {
       const chunks = response.match(/.{1,4000}/g) || [];
-      for (const chunk of chunks) {
-        await ctx.reply(chunk);
+      for (let i = 0; i < chunks.length; i++) {
+        if (i === chunks.length - 1 && replyMarkup) {
+          await ctx.reply(chunks[i], { reply_markup: replyMarkup });
+        } else {
+          await ctx.reply(chunks[i]);
+        }
       }
     } else {
-      await ctx.reply(response);
+      if (replyMarkup) {
+        await ctx.reply(response, { reply_markup: replyMarkup });
+      } else {
+        await ctx.reply(response);
+      }
     }
   } catch (error: any) {
     console.error(`[Bot Error]`, error);
     await ctx.reply('⚠️ Ocurrió un error al procesar tu solicitud: ' + error.message);
+  }
+});
+
+// 4.5 Handle Callback Queries
+bot.on('callback_query:data', async (ctx) => {
+  const data = ctx.callbackQuery.data;
+  const chatId = ctx.chat?.id;
+  const messageId = ctx.callbackQuery.message?.message_id;
+  
+  if (!chatId || !messageId) return;
+
+  if (data === 'linkedin_discard') {
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+    await ctx.reply('Borrador descartado. ¿Qué te gustaría hacer ahora?', { reply_to_message_id: messageId });
+    await ctx.answerCallbackQuery({ text: 'Descartado' });
+  } 
+  else if (data === 'linkedin_publish') {
+    await ctx.answerCallbackQuery({ text: 'Publicando...' });
+    const originalText = ctx.callbackQuery.message?.text || '';
+    
+    // Try to extract content and URL if present
+    let content = originalText;
+    let urlRef = null;
+    if (originalText.includes('🔗 URL Adjunta:')) {
+       const parts = originalText.split('🔗 URL Adjunta:');
+       content = parts[0].trim();
+       urlRef = parts[1].trim();
+    }
+    
+    // Cleanup visual styling from draft tool output
+    content = content.replace('📝 *Borrador de LinkedIn* 📝', '').trim();
+    
+    if (!config.MAKE_LINKEDIN_WEBHOOK_URL) {
+      await ctx.reply('⚠️ Error: Falta configurar MAKE_LINKEDIN_WEBHOOK_URL en las variables de entorno.', { reply_to_message_id: messageId });
+      return;
+    }
+    
+    try {
+      const response = await fetch(config.MAKE_LINKEDIN_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, urlRef, timestamp: new Date().toISOString() })
+      });
+      
+      if (response.ok) {
+        // Remove buttons
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+        await ctx.reply('🎉 ¡Post enviado con éxito a LinkedIn!', { reply_to_message_id: messageId });
+      } else {
+        await ctx.reply(`⚠️ Make devolvió un error de conexión (${response.status})`, { reply_to_message_id: messageId });
+      }
+    } catch (e: any) {
+      await ctx.reply('⚠️ Error de conexión con Make.com: ' + e.message, { reply_to_message_id: messageId });
+    }
+  }
+});
+
+// 5. Handle voice messages
+bot.on('message:voice', async (ctx) => {
+  const voiceFileId = ctx.message.voice.file_id;
+  const chatId = ctx.chat.id;
+
+  await ctx.replyWithChatAction('typing');
+
+  try {
+    await ctx.reply('🎧 *Transcribiendo tu nota de voz...*', { parse_mode: 'Markdown' });
+    const audioBuffer = await downloadTelegramVoice(voiceFileId);
+    const transcribedText = await transcribeAudio(audioBuffer);
+    
+    await ctx.reply(`_Entendido:_ "${transcribedText}"\n\nGenerando respuesta...`, { parse_mode: 'Markdown' });
+
+    const responseText = await processUserMessage(chatId, transcribedText);
+
+    await ctx.replyWithChatAction('record_voice');
+    const responseAudio = await generateSpeech(responseText);
+    
+    // grammy allows passing buffers directly wrapping them with InputFile
+    // Google TTS returns OGG-OPUS, so we can use native "Voice Note" style
+    await ctx.replyWithVoice(new InputFile(responseAudio, 'respuesta.ogg'), { 
+      caption: '🔊 Respuesta de OpenGravity'
+    });
+    // Send text as a fallback if it's short enough to not spam the chat
+    if (responseText.length < 1000) {
+      await ctx.reply(`📄 *Transcripción de mi respuesta:*\n${responseText}`, { parse_mode: 'Markdown' });
+    }
+  } catch (error: any) {
+    console.error(`[Audio Error]`, error);
+    await ctx.reply('⚠️ Hubo un error procesando tu nota de voz: ' + error.message);
   }
 });
 

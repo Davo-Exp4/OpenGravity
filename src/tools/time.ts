@@ -1,4 +1,4 @@
-import { AgentTool } from './registry';
+import { AgentTool } from './registry.js';
 
 export const getCurrentTimeTool: AgentTool = {
   declaration: {

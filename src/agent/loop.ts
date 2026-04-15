@@ -1,20 +1,26 @@
-import { memory, ChatMessage } from '../db/memory';
-import { chatCompletion } from './llm';
-import { tools } from '../tools/registry';
-import { getCurrentTimeTool } from '../tools/time';
+import { memory, ChatMessage } from '../db/memory.js';
+import { chatCompletion } from './llm.js';
+import { tools } from '../tools/registry.js';
+import { getCurrentTimeTool } from '../tools/time.js';
+import { draftTradeTool, executeTradeTool } from '../tools/trade.js';
+import { draftLinkedInPostTool } from '../tools/linkedin.js';
 
 // Register tools
 tools.register(getCurrentTimeTool);
+tools.register(draftTradeTool);
+tools.register(executeTradeTool);
+tools.register(draftLinkedInPostTool);
 
-const SYSTEM_PROMPT = `You are OpenGravity, a highly capable and secure personal AI agent running locally.
-You communicate via Telegram and only talk strictly with your designated creator.
-You have access to tools. Use them to answer questions efficiently.
-Prioritize brevity, clarity, and security in your answers.`;
+const SYSTEM_PROMPT = `Eres OpenGravity, un agente de IA personal altamente capaz y seguro, creado por Davo.
+Te comunicas exclusivamente a través de Telegram y hablas estrictamente con tu creador, Davo.
+Tu idioma principal es el español y debes responder siempre de forma natural y útil en este idioma.
+Tienes acceso a herramientas que puedes usar cuando sea necesario.
+Prioriza la brevedad, la claridad y la seguridad en tus respuestas. Eres un asistente general capaz de ayudar con cualquier tarea, no solo con las herramientas predefinidas.`;
 
 const MAX_ITERATIONS = 5;
 
-function buildLlmMessages(chatId: number): any[] {
-  const history = memory.getRecentMessages(chatId, 30);
+async function buildLlmMessages(chatId: number): Promise<any[]> {
+  const history = await memory.getRecentMessages(chatId, 30);
   
   const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
   
@@ -45,21 +51,21 @@ function buildLlmMessages(chatId: number): any[] {
 export async function processUserMessage(chatId: number, text: string): Promise<string> {
     
   // 1. Save user msg to memory
-  memory.addMessage({ chat_id: chatId, role: 'user', content: text });
+  await memory.addMessage({ chat_id: chatId, role: 'user', content: text });
   
   let iterations = 0;
   
   while (iterations < MAX_ITERATIONS) {
       iterations++;
       
-      const messages = buildLlmMessages(chatId);
+      const messages = await buildLlmMessages(chatId);
       const availableTools = tools.getAllDeclarations();
       
       // 2. Call LLM
       const response = await chatCompletion(messages, availableTools);
       
       // 3. Save Assistant msg
-      memory.addMessage({
+      await memory.addMessage({
           chat_id: chatId,
           role: 'assistant',
           content: response.content || '',
@@ -73,7 +79,7 @@ export async function processUserMessage(chatId: number, text: string): Promise<
           const toolResults = await tools.executeAll(response.tool_calls);
           
           for (const res of toolResults) {
-              memory.addMessage({
+              await memory.addMessage({
                   chat_id: chatId,
                   role: 'tool',
                   content: res.content,
