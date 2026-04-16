@@ -22,7 +22,7 @@ export const draftLinkedInPostTool: AgentTool = {
       draftMsg += `\n🔗 URL Adjunta: ${args.urlRef}`;
     }
     
-    draftMsg += `\n\n[SYSTEM: Please present the LinkedIn draft to the user in English. DO NOT use markdown asterisks (**) for bolding, as LinkedIn does not support them. At the very end of your response, you MUST append the following required tags unmodified: [INLINE_KEYBOARD:LINKEDIN]`;
+    draftMsg += `\n\n[SYSTEM: Please present the LinkedIn draft to the user in English. CRITICAL RULES FOR DRAFT: 1. Write conversationally, organically, and like a real human expressing a personal thought. 2. STRICTLY PROHIBITED to use bullet points, lists, or markdown asterisks (**) for bolding, as they make the text look like AI. 3. Use paragraphs only. At the very end of your response, you MUST append the following required tags unmodified: [INLINE_KEYBOARD:LINKEDIN]`;
     
     if (args.urlRef) {
         draftMsg += ` [URL:${args.urlRef}]`;

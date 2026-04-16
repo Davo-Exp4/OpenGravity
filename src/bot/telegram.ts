@@ -33,6 +33,9 @@ bot.command('clear', async (ctx) => {
 import { downloadTelegramVoice, transcribeAudio, generateSpeech } from '../agent/audio.js';
 
 export async function sendAgentResponse(chatId: number, response: string, replyToMessageId?: number) {
+  // Strip markdown bolding safely in case the LLM stubbornly hallucinated them
+  response = response.replace(/\*\*/g, '');
+
   let replyMarkup: InlineKeyboard | undefined;
   
   if (response.includes('[INLINE_KEYBOARD:LINKEDIN]')) {
