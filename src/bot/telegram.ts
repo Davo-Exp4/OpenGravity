@@ -101,20 +101,23 @@ bot.on('callback_query:data', async (ctx) => {
     // Try to extract content and URL if present
     let content = originalText;
     let urlRef = null;
+    let titleRef = null;
     
-    // Look for our exact hidden tag: [URL:https://...]
+    // Look for our exact hidden tags
     const urlMatch = content.match(/\[URL:(.*?)\]/);
     if (urlMatch && urlMatch[1]) {
         urlRef = urlMatch[1].trim();
-    } else if (content.includes('🔗 URL Adjunta:')) { // fallback just in case
-       const parts = content.split('🔗 URL Adjunta:');
-       content = parts[0].trim();
-       urlRef = parts[1].trim();
+    }
+    
+    const titleMatch = content.match(/\[TITLE:(.*?)\]/);
+    if (titleMatch && titleMatch[1]) {
+        titleRef = titleMatch[1].trim();
     }
     
     // Cleanup visual styling from draft tool output
     content = content.replace('📝 *Borrador de LinkedIn* 📝', '').trim();
     content = content.replace(/\[URL:.*?\]/g, '').trim();
+    content = content.replace(/\[TITLE:.*?\]/g, '').trim();
     
     if (!config.MAKE_LINKEDIN_WEBHOOK_URL) {
       await ctx.reply('⚠️ Error: Falta configurar MAKE_LINKEDIN_WEBHOOK_URL en las variables de entorno.', { reply_to_message_id: messageId });
@@ -125,7 +128,7 @@ bot.on('callback_query:data', async (ctx) => {
       const response = await fetch(config.MAKE_LINKEDIN_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, urlRef, timestamp: new Date().toISOString() })
+        body: JSON.stringify({ content, urlRef, title: titleRef, timestamp: new Date().toISOString() })
       });
       
       if (response.ok) {
