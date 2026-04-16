@@ -5,8 +5,8 @@ import './tools/time.js'; // ensures the tool gets registered
 
 // Webhook handler for Firebase Cloud Functions
 export const opengravitybot = onRequest(
-  { maxInstances: 5 }, 
-  webhookCallback(bot, 'express')
+  { maxInstances: 5, timeoutSeconds: 60 }, 
+  webhookCallback(bot, 'express', undefined, 60000)
 );
 
 export { proactiveLinkedInRoutine } from './cron.js';
