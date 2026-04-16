@@ -22,11 +22,13 @@ export const draftLinkedInPostTool: AgentTool = {
       draftMsg += `\n🔗 URL Adjunta: ${args.urlRef}`;
     }
     
-    draftMsg += `\n\nINSTRUCCIÓN PARA EL LLM: Escribe este post ESTRICTAMENTE EN INGLÉS PROFESIONAL, sin importar el idioma en que se te pidió. Muestra este borrador EXACTAMENTE al usuario. IMPORTANTE: Al final de tu mensaje debes incluir exactamente este texto: [INLINE_KEYBOARD:LINKEDIN] para que la interfaz pueda pintar los botones de publicar.`;
+    draftMsg += `\n\n[SYSTEM: Please present the LinkedIn draft to the user in English. At the very end of your response, you MUST append the following required tags unmodified: [INLINE_KEYBOARD:LINKEDIN]`;
     
     if (args.urlRef) {
-        draftMsg += ` Además DEBES pegar esto justo debajo del botón: [URL:${args.urlRef}]`;
+        draftMsg += ` [URL:${args.urlRef}]`;
     }
+    
+    draftMsg += `]`;
     
     return draftMsg;
   }
